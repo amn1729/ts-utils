@@ -19,5 +19,5 @@ export default match;
 // match(2).cases({
 //     1: "one",
 //     2: "two",
-//     default: "three",
+//     _: "three",
 // }) //=> "two"
