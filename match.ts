@@ -1,16 +1,23 @@
+type TestValue = string | number | boolean;
+
 class MatchObj {
-  test: string;
-  constructor(testValue: string) {
+  test: TestValue;
+  constructor(testValue: TestValue) {
     this.test = testValue;
   }
 
   cases<T>(values: Record<string, T> & { _: T }): T {
-    return values[this.test] || values["_"];
+    return values[this.test.toString()] || values["_"];
+  }
+
+  with<T>(defaultCase: T, ...arrayOfCases: Array<[TestValue, T]>): T {
+    let caseFound = arrayOfCases.find((c) => c[0] === this.test);
+    return caseFound ? caseFound[1] : defaultCase;
   }
 }
 
-function match(v: string | number): MatchObj {
-  return new MatchObj(v.toString());
+function match(v: TestValue): MatchObj {
+  return new MatchObj(v);
 }
 
 export default match;
