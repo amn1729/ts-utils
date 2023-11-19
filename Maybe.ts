@@ -1,34 +1,52 @@
-export type Just<T> = {
-  value: T;
-  _type: "just";
-};
-
-export type Nothing = {
-  value: undefined;
-  _type: "nothing";
-};
+export type Just<T> = { value: T; _type: "just" };
+export type Nothing = { _type: "nothing" };
 
 function toJust<T>(value: T): Just<T> {
   return { value: value, _type: "just" };
 }
-const nothing: Nothing = { value: undefined, _type: "nothing" };
+
+const nothing: Nothing = { _type: "nothing" };
+
+type GetOnMaybe<T> = <U extends NonNullable<T[K]>, K extends keyof T>(
+  key: K
+) => Maybe<U>;
+
+type RunOnMaybe<T> = <U>(fn: (val: T) => U) => Maybe<NonNullable<U>>;
 
 export type Maybe<T> = {
   value: Just<T> | Nothing;
-  run: <U>(fn: (val: T) => U) => Maybe<U>;
-  unwrap: (fallback: T) => T;
+  run: RunOnMaybe<T>;
+  get: GetOnMaybe<T>;
+  unwrap: () => T;
+  unwrapOr: (fallback: T) => T;
+  isJust: () => boolean;
+  isNothing: () => boolean;
 };
 
-function run<T, U>(value: Maybe<T>["value"], fn: (val: T) => U): Maybe<U> {
-  if (value._type === "nothing") return toMaybe<U>(undefined);
-  return toMaybe<U>(fn(value.value));
+function run<T, U>(
+  value: Maybe<T>["value"],
+  fn: (val: T) => U
+): Maybe<NonNullable<U>> {
+  if (value._type === "nothing") return toMaybe<NonNullable<U>>(undefined);
+  return toMaybe<NonNullable<U>>(fn(value.value) as NonNullable<U>);
 }
 
-export function toMaybe<T>(value: T | undefined): Maybe<T> {
-  let v = (value !== undefined ? toJust(value) : nothing) as Maybe<T>["value"];
+export function toMaybe<T>(val?: T | undefined | null): Maybe<T> {
+  const value: Maybe<T>["value"] =
+    val === undefined || val === null ? nothing : toJust(val);
+  const isJust = value._type === "just";
+
   return {
-    value: v,
-    run: <U>(fn: (val: T) => U) => run(v, fn),
-    unwrap: (fallback: T) => value || fallback,
+    value,
+    run: <U>(fn: (val: T) => U) => run(value, fn),
+    get: <U extends NonNullable<T[K]>, K extends keyof T = keyof T>(key: K) =>
+      run<T, U>(value, (v) => v[key] as U),
+    unwrap: () => {
+      if (isJust) return value.value;
+      throw Error("No value to unwrap");
+    },
+    unwrapOr: (fallback: T) => (isJust ? value.value : fallback),
+    isJust: () => isJust,
+    isNothing: () => !isJust,
   };
 }
